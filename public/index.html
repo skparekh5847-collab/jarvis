@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S.</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{--cyan:#00e5ff;--cyan-d:#00e5ff33;--cyan-g:#00e5ff88;--bg:#060a12;--panel:#0b1120ee;--fg:#e0f7fa;--muted:#4d6d7a;--accent:#ff6f00;--green:#00e676;--red:#ff1744;--border:#00e5ff18;--card:#0e1628}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:'Rajdhani',sans-serif;overflow:hidden;height:100vh}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--cyan-d);border-radius:2px}
+.bg-grid{position:fixed;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:50px 50px;opacity:.3;z-index:0;pointer-events:none}
+canvas#bgC{position:fixed;inset:0;z-index:1;pointer-events:none}
+
+.app{position:relative;z-index:10;display:grid;grid-template-columns:280px 1fr 320px;grid-template-rows:52px 1fr 120px;height:100vh;gap:1px}
+
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 20px;background:var(--panel);border-bottom:1px solid var(--border);backdrop-filter:blur(20px)}
+.logo{font-family:'Orbitron',monospace;font-weight:900;font-size:15px;letter-spacing:6px;color:var(--cyan);text-shadow:0 0 15px var(--cyan-g);white-space:nowrap}
+.reactor{width:28px;height:28px;border-radius:50%;background:radial-gradient(circle,#fff 0%,var(--cyan) 20%,var(--cyan-d) 50%,transparent 70%);box-shadow:0 0 12px var(--cyan-g);flex-shrink:0;transition:all .4s}
+.reactor.listening{background:radial-gradient(circle,#fff 0%,var(--accent) 20%,#ff6f0033 50%,transparent 70%);box-shadow:0 0 12px #ff6f0066;animation:rp .8s infinite}
+.reactor.speaking{animation:rp .3s infinite}.reactor.processing{animation:rp .6s infinite}
+@keyframes rp{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.8);opacity:.6}}
+.spacer{flex:1}
+.badge{display:flex;align-items:center;gap:6px;font-size:11px;font-family:'Orbitron',monospace;letter-spacing:1px;color:var(--muted);padding:4px 10px;border:1px solid var(--border);border-radius:4px}
+.badge.on{color:var(--green);border-color:#00e67644}
+.badge .dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}.badge.on .dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.time{font-family:'Orbitron',monospace;font-size:12px;color:var(--cyan);letter-spacing:2px}
+.ibtn{background:none;border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .3s}
+.ibtn:hover{border-color:var(--cyan-g);color:var(--cyan);background:var(--cyan-d)}
+
+.left{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.phdr{padding:12px 16px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--cyan);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.phdr i{font-size:12px}
+.sfeed{flex:1;overflow-y:auto;padding:8px}
+.si{padding:10px 12px;margin-bottom:6px;border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:all .3s;opacity:0;transform:translateX(-15px);animation:sIn .35s forwards}
+.si:hover{border-color:var(--cyan-g);background:#00e5ff08}
+.si .st{font-size:9px;font-family:'Orbitron',monospace;letter-spacing:1px;color:var(--accent);margin-bottom:4px;text-transform:uppercase}
+.si .sl{font-size:13px;font-weight:600;color:var(--fg);line-height:1.4}
+.si .ss{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@keyframes sIn{to{opacity:1;transform:translateX(0)}}
+.lact{padding:8px;border-top:1px solid var(--border)}
+.savebtn{width:100%;padding:8px;background:var(--cyan-d);border:1px solid var(--border);color:var(--cyan);font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;border-radius:4px;cursor:pointer;transition:all .3s;display:flex;align-items:center;justify-content:center;gap:6px}
+.savebtn:hover{background:#00e5ff22;border-color:var(--cyan-g)}
+.savebtn:disabled{opacity:.3;cursor:not-allowed}
+
+.center{background:var(--bg);overflow-y:auto;padding:20px;position:relative}
+.cempty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;gap:12px}
+.cempty i{font-size:40px;color:var(--cyan-d)}
+.rp{background:var(--card);border:1px solid var(--border);border-radius:6px;margin-bottom:12px;overflow:hidden;opacity:0;transform:translateY(15px);animation:pIn .4s forwards}
+.rp:nth-child(2){animation-delay:.08s}.rp:nth-child(3){animation-delay:.16s}.rp:nth-child(4){animation-delay:.24s}.rp:nth-child(5){animation-delay:.32s}
+@keyframes pIn{to{opacity:1;transform:translateY(0)}}
+.rph{padding:10px 16px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--cyan);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;text-transform:uppercase}
+.rpb{padding:14px 16px;font-size:14px;line-height:1.75}
+.rpb .stxt{font-size:15px;font-weight:500}
+.kp{display:flex;gap:10px;margin-bottom:8px;padding:8px 12px;background:#00e5ff06;border-left:2px solid var(--cyan);border-radius:0 4px 4px 0;font-size:13px;line-height:1.6}
+.ds{margin-bottom:10px}
+.ds h4{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--accent);margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.ds h4 i{font-size:9px;transition:transform .3s}
+.ds h4.open i{transform:rotate(90deg)}
+.ds .dc{max-height:0;overflow:hidden;transition:max-height .4s ease;font-size:13px;color:var(--muted);line-height:1.7;white-space:pre-wrap}
+.ds .dc.open{max-height:5000px}
+.tag{display:inline-block;padding:4px 12px;margin:3px;background:var(--cyan-d);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--cyan);cursor:pointer;transition:all .3s;font-weight:500}
+.tag:hover{background:#00e5ff22;border-color:var(--cyan-g);transform:translateY(-1px)}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ccol{background:#00e5ff06;border:1px solid var(--border);border-radius:6px;padding:12px}
+.ccol h4{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:8px}
+.wf{display:flex;align-items:center;justify-content:center;gap:2px;height:30px;margin:16px 0;opacity:0;transition:opacity .3s;pointer-events:none}
+.wf.on{opacity:1}
+.wf span{width:3px;background:var(--cyan);border-radius:2px;box-shadow:0 0 4px var(--cyan-g);transition:height .08s}
+
+.right{background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.cfeed{flex:1;overflow-y:auto;padding:10px}
+.cm{margin-bottom:10px;opacity:0;animation:fU .35s forwards}
+.cm.user{text-align:right}
+.cm .bbl{display:inline-block;max-width:92%;padding:9px 13px;border-radius:8px;font-size:13px;line-height:1.65}
+.cm.jarvis .bbl{background:#00e5ff0a;border:1px solid var(--border);border-radius:2px 8px 8px 8px}
+.cm.user .bbl{background:#ff6f0015;border:1px solid #ff6f0028;border-radius:8px 2px 8px 8px;color:#ffe0b2}
+.cm .lbl{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);margin-bottom:3px;text-transform:uppercase}
+.cm.user .lbl{text-align:right}
+@keyframes fU{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.typing{display:none;padding:8px 13px;gap:4px;align-items:center}
+.typing.on{display:flex}
+.typing span{width:5px;height:5px;background:var(--cyan);border-radius:50%;animation:tb 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-5px);opacity:1}}
+
+.bottombar{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:0 20px;background:var(--panel);border-top:1px solid var(--border)}
+.micbtn{width:44px;height:44px;border-radius:50%;border:2px solid var(--cyan-d);background:#00e5ff08;color:var(--cyan);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;flex-shrink:0}
+.micbtn:hover{border-color:var(--cyan);background:#00e5ff18;box-shadow:0 0 15px var(--cyan-d)}
+.micbtn.on{border-color:var(--accent);color:var(--accent);background:#ff6f0018;box-shadow:0 0 15px #ff6f0044;animation:mp 1.2s infinite}
+@keyframes mp{0%,100%{box-shadow:0 0 15px #ff6f0044}50%{box-shadow:0 0 30px #ff6f0066}}
+.iwrap{flex:1}
+.iwrap input{width:100%;height:44px;background:#ffffff06;border:1px solid var(--border);border-radius:6px;padding:0 16px;color:var(--fg);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:500;outline:none;transition:all .3s}
+.iwrap input::placeholder{color:var(--muted)}
+.iwrap input:focus{border-color:var(--cyan-g);box-shadow:0 0 15px var(--cyan-d)}
+.sbtn{width:44px;height:44px;border-radius:6px;border:1px solid var(--cyan-d);background:#00e5ff0a;color:var(--cyan);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .3s;flex-shrink:0}
+.sbtn:hover{background:#00e5ff22;border-color:var(--cyan)}
+
+/* Error / offline overlay */
+.offline-msg{display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:40px}
+.offline-msg.show{display:flex}
+.offline-msg h2{font-family:'Orbitron',monospace;font-size:16px;letter-spacing:4px;color:var(--red)}
+.offline-msg p{color:var(--muted);font-size:14px;max-width:400px;line-height:1.6}
+
+@media(max-width:1000px){.app{grid-template-columns:1fr;grid-template-rows:52px 1fr 120px}.left,.right{display:none}.center{grid-column:1}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<canvas id="bgC"></canvas>
+
+<div class="offline-msg" id="offlineMsg">
+  <i class="fas fa-exclamation-triangle" style="font-size:48px;color:var(--red)"></i>
+  <h2>BACKEND OFFLINE</h2>
+  <p>The JARVIS server is not running. Start it with:<br><code style="color:var(--cyan);background:var(--cyan-d);padding:4px 10px;border-radius:4px;margin-top:8px;display:inline-block">npm start</code></p>
+</div>
+
+<div class="app" id="appEl" style="display:none">
+  <header class="topbar">
+    <div class="reactor" id="reactor"></div>
+    <div class="logo">J.A.R.V.I.S.</div>
+    <div class="spacer"></div>
+    <div class="badge" id="driveBadge"><span class="dot"></span><span id="driveLabel">Drive Offline</span></div>
+    <div class="badge" id="cacheBadge"><i class="fas fa-database" style="font-size:10px"></i><span id="cacheCount">0</span></div>
+    <div class="time" id="clock">00:00:00</div>
+    <button class="ibtn" id="discBtn" aria-label="Disconnect Drive" style="display:none" title="Disconnect Drive"><i class="fas fa-plug-circle-xmark"></i></button>
+  </header>
+
+  <aside class="left">
+    <div class="phdr"><i class="fas fa-satellite-dish"></i> Sources</div>
+    <div class="sfeed" id="srcFeed"><div style="padding:30px 12px;text-align:center;color:var(--muted);font-size:12px"><i class="fas fa-plug" style="font-size:22px;display:block;margin-bottom:8px;color:var(--cyan-d)"></i>Sources appear here when you ask a question</div></div>
+    <div class="lact">
+      <button class="savebtn" id="saveBtn" disabled><i class="fas fa-cloud-arrow-up"></i> SAVE TO DRIVE</button>
+    </div>
+  </aside>
+
+  <main class="center" id="centerArea">
+    <div class="cempty" id="cempty">
+      <i class="fas fa-atom"></i>
+      <div>Ask me anything — I'll pull live data<br>from Wikipedia and DuckDuckGo</div>
+      <div style="font-size:12px;color:var(--cyan-d)">Try: "How does CRISPR work?" or "Compare React vs Vue"</div>
+    </div>
+    <div class="wf" id="wf"></div>
+  </main>
+
+  <aside class="right">
+    <div class="phdr"><i class="fas fa-terminal"></i> Comm Log</div>
+    <div class="cfeed" id="chatFeed">
+      <div class="cm jarvis" style="animation-delay:.15s">
+        <div class="lbl">Jarvis</div>
+        <div class="bbl">Systems online. I fetch live data, understand your intent, and give direct answers. Connect Google Drive to save research. Speak or type your query.</div>
+      </div>
+      <div class="typing" id="typing"><span></span><span></span><span></span></div>
+    </div>
+  </aside>
+
+  <footer class="bottombar">
+    <button class="micbtn" id="micBtn" aria-label="Microphone"><i class="fas fa-microphone"></i></button>
+    <div class="iwrap"><input type="text" id="txtIn" placeholder="Ask anything..." autocomplete="off"></div>
+    <button class="sbtn" id="sendBtn" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
+  </footer>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  // ── Elements ──
+  const reactor = document.getElementById('reactor');
+  const driveBadge = document.getElementById('driveBadge');
+  const driveLabel = document.getElementById('driveLabel');
+  const cacheCount = document.getElementById('cacheCount');
+  const srcFeed = document.getElementById('srcFeed');
+  const centerArea = document.getElementById('centerArea');
+  const cempty = document.getElementById('cempty');
+  const chatFeed = document.getElementById('chatFeed');
+  const typingEl = document.getElementById('typing');
+  const wfEl = document.getElementById('wf');
+  const txtIn = document.getElementById('txtIn');
+  const micBtn = document.getElementById('micBtn');
+  const sendBtn = document.getElementById('sendBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const discBtn = document.getElementById('discBtn');
+  const offlineMsg = document.getElementById('offlineMsg');
+  const appEl = document.getElementById('appEl');
+
+  let isListening = false, isSpeaking = false, recognition = null, synth = window.speechSynthesis;
+  let lastTopic = null, lastWikiData = null, lastDdgData = null, lastSources = null;
+  let driveConnected = false;
+
+  // ── Waveform bars ──
+  for (let i = 0; i < 30; i++) { const s = document.createElement('span'); s.style.height = '4px'; wfEl.appendChild(s); }
+  const wfBars = wfEl.querySelectorAll('span');
+  setInterval(function() { wfBars.forEach(function(b) { b.style.height = wfEl.classList.contains('on') ? (Math.random()*24+6)+'px' : '4px'; }); }, 70);
+
+  // ── Particles ──
+  var pc = document.getElementById('bgC'), px = pc.getContext('2d'), pts = [];
+  function rsPc() { pc.width = innerWidth; pc.height = innerHeight; } rsPc();
+  addEventListener('resize', rsPc);
+  function Pt() { this.x=Math.random()*pc.width; this.y=Math.random()*pc.height; this.vx=(Math.random()-.5)*.25; this.vy=(Math.random()-.5)*.25; this.r=Math.random()*1.2+.4; this.a=Math.random()*.3+.08; }
+  Pt.prototype.update=function(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>pc.width)this.vx*=-1;if(this.y<0||this.y>pc.height)this.vy*=-1};
+  Pt.prototype.draw=function(){px.beginPath();px.arc(this.x,this.y,Math.max(.1,this.r),0,Math.PI*2);px.fillStyle='rgba(0,229,255,'+this.a+')';px.fill()};
+  for(var i=0;i<60;i++)pts.push(new Pt());
+  (function drawPts(){px.clearRect(0,0,pc.width,pc.height);pts.forEach(function(p){p.update();p.draw()});for(var i=0;i<pts.length;i++)for(var j=i+1;j<pts.length;j++){var dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<100){px.beginPath();px.moveTo(pts[i].x,pts[i].y);px.lineTo(pts[j].x,pts[j].y);px.strokeStyle='rgba(0,229,255,'+(0.05*(1-d/100))+')';px.lineWidth=.5;px.stroke()}}requestAnimationFrame(drawPts)})();
+
+  // ── Clock ──
+  function tick() { document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }
+  setInterval(tick, 1000); tick();
+
+  // ── Helpers ──
+  function toast(msg, type) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:2000;padding:8px 20px;background:var(--panel);border:1px solid '+(type==='error'?'var(--red)':type==='success'?'var(--green)':'var(--cyan-g)')+';border-radius:5px;font-family:Orbitron,monospace;font-size:10px;letter-spacing:1px;color:'+(type==='error'?'var(--red)':type==='success'?'var(--green)':'var(--cyan)')+';backdrop-filter:blur(15px);box-shadow:0 0 25px var(--cyan-d);opacity:0;transform:translate(-50%,-8px);animation:tin .25s forwards,tout .25s 2.5s forwards;pointer-events:none';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ t.remove(); }, 3000);
+  }
+  // Inject toast animations
+  var sty = document.createElement('style');
+  sty.textContent = '@keyframes tin{to{opacity:1;transform:translate(-50%,0)}}@keyframes tout{to{opacity:0;transform:translate(-50%,-8px)}}';
+  document.head.appendChild(sty);
+
+  function setReactor(s) { reactor.className = 'reactor ' + s; }
+
+  function addChat(role, text) {
+    var m = document.createElement('div');
+    m.className = 'cm ' + role;
+    m.innerHTML = '<div class="lbl">' + (role==='jarvis'?'Jarvis':'You') + '</div><div class="bbl">' + text + '</div>';
+    chatFeed.insertBefore(m, typingEl);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
+  function showTyping() { typingEl.classList.add('on'); chatFeed.scrollTop = chatFeed.scrollHeight; }
+  function hideTyping() { typingEl.classList.remove('on'); }
+
+  function clearPanels() {
+    var children = Array.from(centerArea.children);
+    children.forEach(function(c) { if (c !== wfEl && c !== cempty) c.remove(); });
+    cempty.style.display = 'none';
+  }
+
+  function addPanel(title, icon, body) {
+    var p = document.createElement('div');
+    p.className = 'rp';
+    p.innerHTML = '<div class="rph"><i class="fas ' + icon + '"></i>' + title + '</div><div class="rpb">' + body + '</div>';
+    centerArea.insertBefore(p, wfEl);
+  }
+
+  function clearSources() { srcFeed.innerHTML = ''; }
+
+  function addSource(type, title, snippet, url) {
+    var d = document.createElement('div');
+    d.className = 'si';
+    d.innerHTML = '<div class="st">' + type + '</div><div class="sl">' + title + '</div>' + (snippet ? '<div class="ss">' + snippet + '</div>' : '');
+    if (url) d.onclick = function() { window.open(url, '_blank'); };
+    srcFeed.appendChild(d);
+  }
+
+  // ── Speech ──
+  function speak(text) {
+    if (synth.speaking) synth.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    var v = synth.getVoices();
+    var pref = v.find(function(x){return x.name.includes('Daniel')}) || v.find(function(x){return x.lang==='en-GB'}) || v.find(function(x){return x.lang.startsWith('en')}) || v[0];
+    if (pref) u.voice = pref;
+    u.rate = 1.05; u.pitch = 0.9;
+    u.onstart = function() { isSpeaking=true; setReactor('speaking'); wfEl.classList.add('on'); };
+    u.onend = function() { isSpeaking=false; setReactor(''); wfEl.classList.remove('on'); };
+    synth.speak(u);
+  }
+  if (synth.onvoiceschanged !== undefined) synth.onvoiceschanged = function(){ synth.getVoices(); };
+
+  // ── Speech Recognition ──
+  function initSR() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    recognition.onstart = function() { isListening=true; micBtn.classList.add('on'); setReactor('listening'); };
+    recognition.onresult = function(e) { processInput(e.results[0][0].transcript); };
+    recognition.onerror = function(e) { if(e.error!=='no-speech') toast('Recognition: '+e.error,'error'); stopListen(); };
+    recognition.onend = function() { stopListen(); };
+  }
+  function startListen() { if(isSpeaking) synth.cancel(); try{recognition&&recognition.start()}catch(e){} }
+  function stopListen() { isListening=false; micBtn.classList.remove('on'); if(!isSpeaking) setReactor(''); }
+  function toggleMic() { isListening ? recognition&&recognition.stop() : startListen(); }
+
+  // ── Backend Check + Init ──
+  fetch('/api/auth/status').then(function(r) {
+    if (!r.ok) throw new Error('offline');
+    return r.json();
+  }).then(function(data) {
+    appEl.style.display = '';
+    offlineMsg.classList.remove('show');
+    updateDriveUI(data.connected);
+    fetchCacheStats();
+    checkAuthRedirect();
+  }).catch(function() {
+    offlineMsg.classList.add('show');
+    appEl.style.display = 'none';
+  });
+
+  function checkAuthRedirect() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('auth_success')) {
+      toast('Drive connected successfully', 'success');
+      driveConnected = true;
+      updateDriveUI(true);
+      window.history.replaceState({}, '', '/');
+    }
+    if (params.get('auth_error')) {
+      toast('Auth failed: ' + params.get('auth_error'), 'error');
+      window.history.replaceState({}, '', '/');
+    }
+  }
+
+  function fetchCacheStats() {
+    fetch('/api/cache/stats').then(function(r){return r.json()}).then(function(d){
+      cacheCount.textContent = d.count;
+    }).catch(function(){});
+  }
+
+  function updateDriveUI(connected) {
+    driveConnected = connected;
+    if (connected) {
+      driveBadge.classList.add('on');
+      driveLabel.textContent = 'Drive Connected';
+      discBtn.style.display = '';
+      saveBtn.disabled = !lastTopic;
+    } else {
+      driveBadge.classList.remove('on');
+      driveLabel.textContent = 'Drive Offline';
+      discBtn.style.display = 'none';
+      saveBtn.disabled = true;
+    }
+  }
+
+  // ── Main Process ──
+  async function processInput(text) {
+    addChat('user', text);
+    setReactor('processing');
+    showTyping();
+
+    try {
+      var r = await fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text })
+      });
+      var data = await r.json();
+
+      if (data.error) {
+        hideTyping(); setReactor('');
+        addChat('jarvis', data.error);
+        toast(data.error, 'error');
+        return;
+      }
+
+      hideTyping();
+
+      if (data.type === 'quick') {
+        addChat('jarvis', data.answer);
+        speak(data.answer);
+        setReactor('');
+        return;
+      }
+
+      // Research or Compare — render everything
+      clearPanels();
+      clearSources();
+      lastTopic = data.topic;
+      lastWikiData = null; // not sent for brevity, but we have the answer
+      lastDdgData = null;
+      lastSources = data.sources;
+
+      // Render panels
+      if (data.panels) {
+        data.panels.forEach(function(p) {
+          addPanel(p.title, p.icon, p.content);
+        });
+      }
+
+      // Render sources
+      if (data.sources) {
+        data.sources.forEach(function(s) {
+          addSource(s.type, s.title, s.snippet, s.url);
+        });
+      }
+
+      // Update save button
+      if (driveConnected) saveBtn.disabled = false;
+
+      addChat('jarvis', data.answer);
+      speak(data.answer);
+      fetchCacheStats();
+      setReactor('');
+
+    } catch(e) {
+      hideTyping(); setReactor('');
+      addChat('jarvis', 'Connection to backend lost. Is the server running?');
+      toast('Backend connection failed', 'error');
+    }
+  }
+
+  // ── Event Listeners ──
+  micBtn.addEventListener('click', function(e) { e.preventDefault(); toggleMic(); });
+  sendBtn.addEventListener('click', function(e) { e.preventDefault(); var v=txtIn.value.trim(); if(v){processInput(v);txtIn.value=''} });
+  txtIn.addEventListener('keydown', function(e) { if(e.key==='Enter'){var v=e.target.value.trim();if(v){processInput(v);e.target.value=''}} });
+  document.addEventListener('keydown', function(e) {
+    if(e.code==='Space'&&document.activeElement!==txtIn){e.preventDefault();toggleMic()}
+    if(e.key==='Escape'){}
+  });
+
+  // Save to Drive
+  saveBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    if (!lastTopic) return;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SAVING...';
+
+    try {
+      var r = await fetch('/api/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: lastTopic, answer: '', wikiData: null, ddgData: null, sources: lastSources })
+      });
+      var data = await r.json();
+      if (data.error) {
+        if (r.status === 401 && data.error.includes('refreshed')) {
+          toast('Token refreshed — click save again', 'success');
+          saveBtn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> SAVE TO DRIVE';
+          saveBtn.disabled = false;
+          return;
+        }
+        // Need to re-auth
+        if (r.status === 401) {
+          toast('Session expired — reconnecting Drive...', 'error');
+          var urlR = await fetch('/api/auth/url');
+          var urlD = await urlR.json();
+          window.location.href = urlD.url;
+          return;
+        }
+        throw new Error(data.error);
+      }
+      toast(data.message || 'Saved!', 'success');
+    } catch(e) {
+      toast('Save failed: ' + e.message, 'error');
+    }
+    saveBtn.innerHTML = '<i class="fas fa-cloud-arrow-up"></i> SAVE TO DRIVE';
+    if (driveConnected) saveBtn.disabled = !lastTopic;
+  });
+
+  // Disconnect Drive
+  discBtn.addEventListener('click', async function(e) {
+    e.preventDefault();
+    try {
+      await fetch('/api/auth/disconnect', { method:'POST' });
+      updateDriveUI(false);
+      toast('Drive disconnected');
+    } catch(e) { toast('Failed to disconnect','error'); }
+  });
+
+  // Delegate clicks for tags and section toggles
+  document.addEventListener('click', function(e) {
+    // Related topic tag
+    var tag = e.target.closest('.tag');
+    if (tag && tag.dataset.topic) {
+      e.preventDefault();
+      txtIn.value = '';
+      processInput('Tell me about ' + tag.dataset.topic);
+      return;
+    }
+    // Section toggle
+    var toggle = e.target.closest('.section-toggle');
+    if (toggle) {
+      e.preventDefault();
+      toggle.classList.toggle('open');
+      var content = toggle.nextElementSibling;
+      if (content) content.classList.toggle('open');
+      return;
+    }
+  });
+
+  // Init speech
+  try { initSR(); } catch(e) {}
+
+});
+</script>
+</body>
+</html>
